@@ -12,6 +12,45 @@
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
+    <script>
+      
+      function setDdo() {
+        var searchTerm = getParamaterValue("kw");
+        setPageView(location.pathname, searchTerm ? searchTerm : "");
+      }
+
+
+      function setPageView(pageId, searchTerm) {
+        window.digitalData = {
+          page: {
+            pageInfo: {
+              pageID: pageId,
+              onsiteSearchTerm: searchTerm,
+              onsiteSearchResults: 0
+            },
+            category: {
+              primaryCategory: null
+            },
+            attributes: {
+              exploreAttributes: "",
+              extraFields: ""
+            }
+          }
+        }
+      }
+      function getParamaterValue(parameterName) {
+        if (!location.search) {
+          return null;
+        }
+
+        var queryString = location.search.replace(/\+/g, ' ');
+        var result = new RegExp('[\\?&]' + parameterName + '=([^&]*)').exec(queryString);
+        return result && decodeURIComponent(result[1]);
+      }
+
+      setDdo();
+
+    </script>
     <script id="rtp-execution-engine" src="https://rtp-0-xe.ibmmarketingcloud.com/xe/execution-engine.min.js" zone-rules-url="https://rtp-0.ibmmarketingcloud.com/rtp/ekOIOu8eCGlu0abCDNiOahATZgd1J9gFyg_WAw9P0gU=" defer></script>
   </head>
   <body>
