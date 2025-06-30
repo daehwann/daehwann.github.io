@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>또바기삼계탕 매출분석 대시보드 (Chart.js 높이 수정)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #343a40;
+            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .container {
+            width: 100%;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 20px;
+            box-sizing: border-box;
+            flex-grow: 1;
+        }
+        header { text-align: center; margin-bottom: 30px; }
+        header h1 { font-size: 26px; font-weight: 700; margin-bottom: 5px; color: #212529; }
+        header p { font-size: 15px; color: #6c757d; }
+
+        .grid-container { display: grid; gap: 20px; margin-bottom: 30px; }
+        .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+        .kpi-card {
+            background-color: #ffffff; padding: 20px; border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08); text-align: center;
+        }
+        .kpi-card h3 { font-size: 15px; color: #495057; margin-bottom: 10px; font-weight: 600; }
+        .kpi-card .value { font-size: 24px; font-weight: 700; }
+        .kpi-card .value.revenue { color: #0d6efd; }
+        .kpi-card .value.profit { color: #198754; }
+        .kpi-card .value.margin { color: #6f42c1; }
+
+        .chart-grid { grid-template-columns: 1fr; }
+        @media (min-width: 992px) { .chart-grid { grid-template-columns: 2fr 1fr; } }
+
+        .chart-section {
+            background-color: #ffffff; padding: 20px; border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        .chart-section h2 { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #343a40; }
+
+        .chart-wrapper {
+            position: relative; 
+        }
+        .trend-chart-wrapper {
+            height: 350px; 
+        }
+        .pie-chart-wrapper {
+            height: 350px; 
+        }
+        @media (max-width: 991px) { 
+            .trend-chart-wrapper {
+                height: 300px;
+            }
+            .pie-chart-wrapper {
+                height: 300px; 
+            }
+        }
+         @media (max-width: 767px) { 
+            .trend-chart-wrapper {
+                height: 280px;
+            }
+            .pie-chart-wrapper {
+                height: 280px;
+            }
+        }
+
+        .table-section {
+            background-color: #ffffff; padding: 20px; border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08); overflow-x: auto;
+        }
+        .table-section h2 { font-size: 18px; font-weight: 600; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td {
+            padding: 10px 12px; text-align: left;
+            border-bottom: 1px solid #dee2e6; white-space: nowrap;
+        }
+        th { background-color: #f8f9fa; font-weight: 600; color: #495057; }
+        tbody tr:hover { background-color: #e9ecef; }
+        .text-right { text-align: right !important; }
+        .font-semibold { font-weight: 600; }
+        .text-red { color: #dc3545; }
+        .text-green { color: #198754; }
+        .text-indigo { color: #6f42c1; }
+
+        footer {
+            text-align: center; padding: 25px 20px; font-size: 13px;
+            color: #6c757d; background-color: #e9ecef; margin-top: auto;
+        }
+        #loading-message {
+            display: flex; justify-content: center; align-items: center;
+            height: 200px; font-size: 16px; color: #6c757d;
+        }
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            header h1 { font-size: 22px; }
+            header p { font-size: 14px; }
+            .kpi-card { padding: 15px; }
+            .kpi-card .value { font-size: 20px; }
+            .chart-section h2, .table-section h2 { font-size: 17px; }
+            table { font-size: 12px; }
+            th, td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>또바기삼계탕 매출분석 대시보드</h1>
+            <p>2024년 9월 ~ 2025년 6월</p>
+        </header>
+
+        <section class="grid-container kpi-grid" id="kpiCards">
+            </section>
+
+        <section class="grid-container chart-grid">
+            <div class="chart-section">
+                <h2>월별 주요 지표 추이</h2>
+                <div class="chart-wrapper trend-chart-wrapper">
+                    <canvas id="trendChart"></canvas>
+                </div>
+                <p id="trendChartLoading" style="font-size:12px; color:#6c757d; text-align:center; margin-top:10px;"></p>
+            </div>
+            <div class="chart-section">
+                <h2>최신 월 비용 구성 (<span id="latestMonthForPie"></span>)</h2>
+                <div class="chart-wrapper pie-chart-wrapper">
+                    <canvas id="expensePieChart"></canvas>
+                </div>
+                <p id="pieChartLoading" style="font-size:12px; color:#6c757d; text-align:center; margin-top:10px;"></p>
+            </div>
+        </section>
+
+        <section class="table-section">
+            <h2>월별 상세 데이터</h2>
+            <div id="dataTableContainer">
+                <div id="loading-message">데이터 테이블 로딩 중...</div>
+            </div>
+             <p style="font-size:11px; color:#6c757d; text-align:center; margin-top:8px;">* 총 지출 및 순수익은 제공된 이미지의 '금액(A): 재고포함' 기준입니다.</p>
+        </section>
+    </div>
+    <footer>
+        <p>&copy; <span id="currentYear"></span> 또바기삼계탕. All rights reserved.</p>
+        <p>데이터 시각화 by Gemini (Chart.js Ver.)</p>
+    </footer>
+
+    <script>
+        // 데이터 (사장님 제공 이미지 기반)
+        const storeData = [
+            { month: "2024-09", revenue: 10676800, expenses: { foodCost: 3301631, labor: 1500000, supplies: 273300, equipment: 0, utilities: 2447709, operating: 1134660, fees: 109790, other: 0 }},
+            { month: "2024-10", revenue: 11111000, expenses: { foodCost: 3934205, labor: 1500000, supplies: 512165, equipment: 0, utilities: 1941680, operating: 1152840, fees: 852800, other: 0 }},
+            { month: "2024-11", revenue: 14194000, expenses: { foodCost: 4821330, labor: 1500000, supplies: 934775, equipment: 0, utilities: 1648579, operating: 1363600, fees: 1135470, other: 0 }},
+            { month: "2024-12", revenue: 16686900, expenses: { foodCost: 4919026, labor: 1500000, supplies: 655550, equipment: 1400000, utilities: 1829499, operating: 1425800, fees: 1429746, other: 0 }},
+            { month: "2025-01", revenue: 13381100, expenses: { foodCost: 4405295, labor: 2500000, supplies: 770645, equipment: 0, utilities: 2067098, operating: 1619870, fees: 1133500, other: 0 }},
+            { month: "2025-02", revenue: 13020300, expenses: { foodCost: 4525784, labor: 1800000, supplies: 660250, equipment: 0, utilities: 2110163, operating: 1588300, fees: 1194332, other: 0 }},
+            { month: "2025-03", revenue: 14602400, expenses: { foodCost: 4429105, labor: 1500000, supplies: 890196, equipment: 35894, utilities: 2061003, operating: 1212700, fees: 1153934, other: 0 }},
+            { month: "2025-04", revenue: 15136400, expenses: { foodCost: 4404021, labor: 1500000, supplies: 296912, equipment: 0, utilities: 1858942, operating: 1267450, fees: 1140593, other: 1072500 }},
+            { month: "2025-05", revenue: 17446000, expenses: { foodCost: 4834473, labor: 1500000, supplies: 783680, equipment: 0, utilities: 2072711, operating: 1802240, fees: 1600720, other: 0 }},
+            // === 2025년 6월 데이터 추가 ===
+            { month: "2025-06", revenue: 16985500, expenses: { foodCost: 4884076, labor: 1500000, supplies: 716530, equipment: 0, utilities: 1858019, operating: 1844980, fees: 1564668, other: 12000 }},
+            // === 추가 끝 ===
+        ];
+
+        // 월별 데이터 정렬 (오름차순)
+        storeData.sort((a, b) => {
+            const dateA = new Date(a.month.replace('-', '/'));
+            const dateB = new Date(b.month.replace('-', '/'));
+            return dateA - dateB;
+        });
+
+
+        function processData(data) {
+            return data.map(item => {
+                const totalExpenses = Object.values(item.expenses).reduce((sum, val) => sum + val, 0);
+                const netProfit = item.revenue - totalExpenses;
+                const profitMargin = item.revenue > 0 ? (netProfit / item.revenue) * 100 : 0;
+                return { ...item, totalExpenses, netProfit, profitMargin };
+            });
+        }
+
+        const processedData = processData(storeData);
+        const latestMonthData = processedData.length > 0 ? processedData[processedData.length - 1] : null;
+
+        const formatCurrency = (num) => num.toLocaleString('ko-KR') + " 원";
+        const formatPercentage = (num) => num.toFixed(1) + " %";
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+            // === 수정된 부분: 부제목 기간 업데이트 ===
+            const headerP = document.querySelector('header p');
+            if (headerP && processedData.length > 0) {
+                const firstMonth = processedData[0].month;
+                const lastMonth = processedData[processedData.length - 1].month;
+                headerP.textContent = `${firstMonth.replace('-', '년 ')}월 ~ ${lastMonth.replace('-', '년 ')}월`;
+            }
+
+            if (latestMonthData) {
+                const kpiContainer = document.getElementById('kpiCards');
+                kpiContainer.innerHTML = `
+                    <div class="kpi-card">
+                        <h3>최신 월 매출 (${latestMonthData.month.slice(-2)}월)</h3>
+                        <p class="value revenue">${formatCurrency(latestMonthData.revenue)}</p>
+                    </div>
+                    <div class="kpi-card">
+                        <h3>최신 월 순수익 (${latestMonthData.month.slice(-2)}월)</h3>
+                        <p class="value profit">${formatCurrency(latestMonthData.netProfit)}</p>
+                    </div>
+                    <div class="kpi-card">
+                        <h3>최신 월 순이익률 (${latestMonthData.month.slice(-2)}월)</h3>
+                        <p class="value margin">${formatPercentage(latestMonthData.profitMargin)}</p>
+                    </div>
+                `;
+                document.getElementById('latestMonthForPie').textContent = `${latestMonthData.month.slice(-2)}월`;
+            }
+
+            if (typeof Chart === 'undefined') {
+                document.getElementById('trendChartLoading').innerText = '차트 라이브러리 로딩 실패! 새로고침 해주세요.';
+                document.getElementById('pieChartLoading').innerText = '차트 라이브러리 로딩 실패!';
+                document.getElementById('loading-message').innerText = '차트 라이브러리 로딩 실패로 테이블을 표시할 수 없습니다.';
+                console.error('Chart.js is not loaded!');
+                return;
+            }
+            
+            const trendChartLoadingP = document.getElementById('trendChartLoading');
+            if (trendChartLoadingP) {
+                trendChartLoadingP.innerText = ''; 
+            }
+
+
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: processedData.map(d => d.month),
+                    datasets: [
+                        { label: '매출액', data: processedData.map(d => d.revenue), borderColor: '#0d6efd', backgroundColor: 'rgba(13, 110, 253, 0.1)', tension: 0.3, fill: true },
+                        { label: '총 지출', data: processedData.map(d => d.totalExpenses), borderColor: '#dc3545', backgroundColor: 'rgba(220, 53, 69, 0.1)', tension: 0.3, fill: true },
+                        { label: '순수익', data: processedData.map(d => d.netProfit), borderColor: '#198754', backgroundColor: 'rgba(25, 135, 84, 0.1)', tension: 0.3, fill: true }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, 
+                    scales: {
+                        y: { beginAtZero: false, ticks: { callback: (value) => (value / 1000000).toLocaleString('ko-KR') + '백만' } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: { tooltip: { callbacks: { label: (context) => `${context.dataset.label}: ${formatCurrency(context.raw)}` } } }
+                }
+            });
+
+            if (latestMonthData) {
+                const expenseLabels = ['식자재비', '인건비', '소모품비', '비품비', '공과금', '운영경비', '각종수수료', '기타'];
+                const expenseData = [
+                    latestMonthData.expenses.foodCost, latestMonthData.expenses.labor, latestMonthData.expenses.supplies,
+                    latestMonthData.expenses.equipment, latestMonthData.expenses.utilities, latestMonthData.expenses.operating,
+                    latestMonthData.expenses.fees, latestMonthData.expenses.other
+                ];
+                const backgroundColors = ['#0d6efd', '#6f42c1', '#198754', '#ffc107', '#fd7e14', '#20c997', '#6610f2', '#adb5bd'];
+                const filteredLabels = [], filteredData = [], filteredColors = [];
+                expenseData.forEach((value, index) => {
+                    if (value > 0) {
+                        filteredLabels.push(expenseLabels[index]);
+                        filteredData.push(value);
+                        filteredColors.push(backgroundColors[index]);
+                    }
+                });
+
+                if (filteredData.length > 0) {
+                    const pieCtx = document.getElementById('expensePieChart').getContext('2d');
+                    new Chart(pieCtx, {
+                        type: 'doughnut',
+                        data: { labels: filteredLabels, datasets: [{ data: filteredData, backgroundColor: filteredColors, hoverOffset: 4 }] },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false, 
+                            plugins: {
+                                legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12 } },
+                                tooltip: { callbacks: { label: (context) => {
+                                    const label = context.label || ''; const value = context.raw;
+                                    const percentage = ((value / filteredData.reduce((a,b)=>a+b,0)) * 100).toFixed(1) + '%';
+                                    return `${label}: ${formatCurrency(value)} (${percentage})`;
+                                }}}
+                            }
+                        }
+                    });
+                    document.getElementById('pieChartLoading').innerText = '';
+                } else { document.getElementById('pieChartLoading').innerText = '최신 월 비용 데이터가 없습니다.'; }
+            } else { document.getElementById('pieChartLoading').innerText = '최신 월 데이터를 찾을 수 없습니다.'; }
+
+            const tableContainer = document.getElementById('dataTableContainer');
+            let tableHTML = `<table><thead><tr>
+                <th>월</th><th class="text-right">매출액</th><th class="text-right">식자재비</th><th class="text-right">인건비</th>
+                <th class="text-right">소모품비</th><th class="text-right">비품비</th><th class="text-right">공과금</th>
+                <th class="text-right">운영경비</th><th class="text-right">수수료</th><th class="text-right">기타</th>
+                <th class="text-right font-semibold text-red">총 지출</th><th class="text-right font-semibold text-green">순수익</th>
+                <th class="text-right font-semibold text-indigo">순이익률</th>
+                </tr></thead><tbody>`;
+            processedData.forEach(row => {
+                tableHTML += `<tr>
+                    <td>${row.month}</td><td class="text-right">${formatCurrency(row.revenue)}</td>
+                    <td class="text-right">${formatCurrency(row.expenses.foodCost)}</td><td class="text-right">${formatCurrency(row.expenses.labor)}</td>
+                    <td class="text-right">${formatCurrency(row.expenses.supplies)}</td><td class="text-right">${formatCurrency(row.expenses.equipment)}</td>
+                    <td class="text-right">${formatCurrency(row.expenses.utilities)}</td><td class="text-right">${formatCurrency(row.expenses.operating)}</td>
+                    <td class="text-right">${formatCurrency(row.expenses.fees)}</td><td class="text-right">${formatCurrency(row.expenses.other)}</td>
+                    <td class="text-right font-semibold text-red">${formatCurrency(row.totalExpenses)}</td>
+                    <td class="text-right font-semibold text-green">${formatCurrency(row.netProfit)}</td>
+                    <td class="text-right font-semibold text-indigo">${formatPercentage(row.profitMargin)}</td></tr>`;
+            });
+            tableHTML += `</tbody></table>`;
+            tableContainer.innerHTML = tableHTML;
+        });
+    </script>
+</body>
+</html>
